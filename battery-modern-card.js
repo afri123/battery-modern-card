@@ -3,7 +3,6 @@ import { LitElement, html, css } from "https://unpkg.com/lit-element@2.4.0/lit-e
 // --- VISUELLER EDITOR ---
 class BatteryModernCardEditor extends LitElement {
   static get properties() { return { hass: {}, config: {} }; }
-
   setConfig(config) { this.config = config; }
 
   _changeValue(field, value) {
@@ -16,7 +15,6 @@ class BatteryModernCardEditor extends LitElement {
 
   render() {
     if (!this.hass || !this.config) return html``;
-
     return html`
       <div class="editor-container">
         <ha-expansion-panel header="Karten-Titel & Design" outlined expanded>
@@ -24,13 +22,9 @@ class BatteryModernCardEditor extends LitElement {
             <div class="grid-2">
               <ha-textfield label="Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
               <ha-icon-picker .hass=${this.hass} .value=${this.config.title_icon || ''} label="Titel Icon" @value-changed=${(e) => this._changeValue('title_icon', e.detail.value)}></ha-icon-picker>
-              <ha-textfield label="Schwellenwert für 'Kritisch' (%)" type="number" .value="${this.config.critical_threshold || 20}" @input="${(e) => this._changeValue('critical_threshold', e.target.value)}"></ha-textfield>
             </div>
           </div>
         </ha-expansion-panel>
-        <p style="color: var(--secondary-text-color); font-size: 0.9rem; padding: 0 8px;">
-          Hinweis: Diese Karte erkennt automatisch alle Batterie-Sensoren in deinem System und sortiert sie nach dem niedrigsten Stand.
-        </p>
       </div>
     `;
   }
@@ -53,56 +47,66 @@ class BatteryModernCard extends LitElement {
   }
 
   static getConfigElement() { return document.createElement("battery-modern-card-editor"); }
-  static getStubConfig() { return { title: "Batteriestatus", critical_threshold: 20 }; }
+  static getStubConfig() { return { title: "Batteriestatus" }; }
 
   setConfig(config) { this.config = config; }
 
-  // Berechnet die Farbe basierend auf dem Wert (Rot -> Gelb -> Grün)
   _getDynamicColor(value) {
-    if (value <= 20) return "#f44336"; // Rot
-    if (value <= 40) return "#ff9800"; // Orange
-    if (value <= 60) return "#ffeb3b"; // Gelb
-    return "#4caf50"; // Grün
+    if (value <= 20) return "#f44336"; 
+    if (value <= 40) return "#ff9800"; 
+    if (value <= 60) return "#ffeb3b"; 
+    return "#4caf50"; 
   }
 
   _getBatteryIcon(value) {
     if (value <= 5) return "mdi:battery-outline";
-    if (value <= 95) return `mdi:battery-${Math.round(value / 10) * 10}`;
-    return "mdi:battery";
+    if (value >= 95) return "mdi:battery";
+    const rounded = Math.round(value / 10) * 10;
+    return `mdi:battery-${rounded}`;
   }
 
   render() {
     if (!this.hass) return html``;
 
-    // 1. Automatische Erkennung aller Batterie-Entitäten
-    const batteryEntities = Object.keys(this.hass.states).filter(entityId => {
-      const state = this.hass.states[entityId];
-      const deviceClass = state.attributes.device_class;
-      const unit = state.attributes.unit_of_measurement;
-      
-      return (
-        deviceClass === 'battery' || 
-        unit === '%' && (entityId.includes('battery') || entityId.includes('akku'))
-      );
-    });
+    // BREITERE ERKENNUNGSLOGIK
+    const batteries = Object.keys(this.hass.states)
+      .filter(entityId => {
+        const state = this.hass.states[entityId];
+        const attributes = state.attributes || {};
+        const deviceClass = attributes.device_class;
+        const unit = attributes.unit_of_measurement;
+        const friendlyName = (attributes.friendly_name || "").toLowerCase();
+        const idLower = entityId.toLowerCase();
 
-    // 2. Daten aufbereiten und sortieren (Niedrigste zuerst)
-    const batteries = batteryEntities
+        // 1. Check auf Device Class
+        if (deviceClass === 'battery') return true;
+
+        // 2. Check auf Einheit % UND Name (Battery/Akku/Ladestand)
+        const isPercent = unit === '%';
+        const hasBatteryName = idLower.includes('battery') || 
+                               idLower.includes('akku') || 
+                               idLower.includes('ladestand') ||
+                               friendlyName.includes('battery') ||
+                               friendlyName.includes('akku');
+
+        return isPercent && hasBatteryName;
+      })
       .map(id => {
         const stateObj = this.hass.states[id];
+        const val = parseFloat(stateObj.state);
         return {
           id: id,
           name: stateObj.attributes.friendly_name || id,
-          state: parseFloat(stateObj.state),
-          display_state: stateObj.state
+          state: val
         };
       })
+      // Nur valide Zahlen behalten und Unbekannt/Unavailable filtern
       .filter(b => !isNaN(b.state))
+      // Sortierung: Niedrigster Ladestand oben
       .sort((a, b) => a.state - b.state);
 
     const avg = batteries.length > 0 ? (batteries.reduce((a, b) => a + b.state, 0) / batteries.length).toFixed(0) : '-';
-    const criticalThreshold = this.config.critical_threshold || 20;
-    const criticalCount = batteries.filter(b => b.state <= criticalThreshold).length;
+    const criticalCount = batteries.filter(b => b.state <= 20).length;
 
     return html`
       <ha-card>
@@ -128,6 +132,7 @@ class BatteryModernCard extends LitElement {
 
         <div class="card-content">
           <div class="battery-list">
+            ${batteries.length === 0 ? html`<p style="text-align:center; color: var(--secondary-text-color);">Keine Batterien gefunden</p>` : ''}
             ${batteries.map(b => html`
               <div class="battery-item">
                 <div class="battery-icon" style="color: ${this._getDynamicColor(b.state)}">
@@ -135,7 +140,7 @@ class BatteryModernCard extends LitElement {
                 </div>
                 <div class="battery-info">
                   <div class="battery-name">${b.name}</div>
-                  <div class="battery-status-text">${b.state <= criticalThreshold ? 'Austauschen!' : 'In Ordnung'}</div>
+                  <div class="battery-status-text">${b.state <= 20 ? 'Kritisch' : 'Normal'}</div>
                 </div>
                 <div class="battery-value" style="color: ${this._getDynamicColor(b.state)}">
                   ${b.state}%
@@ -150,11 +155,9 @@ class BatteryModernCard extends LitElement {
 
   static get styles() {
     return css`
-      :host { --success-color: #4caf50; --error-color: #f44336; }
       .custom-header { padding: 24px 16px 16px; display: flex; align-items: center; gap: 12px; }
-      .header-icon { --mdc-icon-size: 28px; color: var(--primary-text-color); }
-      .header-title { font-size: 24px; font-weight: 400; letter-spacing: -0.012em; }
-
+      .header-icon { --mdc-icon-size: 28px; }
+      .header-title { font-size: 24px; font-weight: 400; }
       .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 20px; }
       .stat-box {
         position: relative; border-radius: 12px; padding: 20px 12px;
@@ -164,11 +167,10 @@ class BatteryModernCard extends LitElement {
         transition: transform 0.2s ease;
       }
       .stat-box:hover { transform: translateY(-2px); }
-      .critical-border { border: 1px solid var(--error-color); }
-      .critical-text { color: var(--error-color); }
+      .critical-border { border: 1px solid #f44336; }
+      .critical-text { color: #f44336; }
       .stat-value { font-size: 2.2rem; font-weight: 500; line-height: 1.2; }
-      .stat-name { font-size: 0.8rem; color: var(--secondary-text-color); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
+      .stat-name { font-size: 0.8rem; color: var(--secondary-text-color); font-weight: 600; text-transform: uppercase; }
       .card-content { padding: 0 16px 16px; }
       .battery-list { display: flex; flex-direction: column; gap: 12px; }
       .battery-item {
@@ -191,7 +193,7 @@ customElements.define("battery-modern-card", BatteryModernCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "battery-modern-card",
-  name: "Battery Modern Card (Auto-Discovery)",
-  description: "Erkennt automatisch alle Akkus und sortiert sie nach Ladestand.",
+  name: "Battery Modern Card",
+  description: "Erkennt automatisch alle Akkus.",
   preview: true
 });
