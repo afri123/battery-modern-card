@@ -38,9 +38,13 @@ class BatteryModernCardEditor extends LitElement {
     this._changeValue('custom_badges', custom_badges);
   }
 
+  // GEFIXT: Bulletproof Hinzufügen-Logik
   _addEntity(field, entityId) {
     if(!entityId) return;
-    const list = [...this.config[field]];
+    
+    // Altlasten bereinigen (Falls noch Objekte im Array sind)
+    const list = (this.config[field] || []).map(e => typeof e === 'string' ? e : e.entity);
+    
     if (!list.includes(entityId)) {
       list.push(entityId);
       this._changeValue(field, list);
@@ -48,7 +52,7 @@ class BatteryModernCardEditor extends LitElement {
   }
 
   _removeEntity(field, index) {
-    const list = [...this.config[field]];
+    const list = [...(this.config[field] || [])];
     list.splice(index, 1);
     this._changeValue(field, list);
   }
@@ -65,16 +69,20 @@ class BatteryModernCardEditor extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
 
+    // Sicheres Auslesen der Listen
+    const manualList = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
+    const excludeList = this.config.exclude || [];
+
     const currentIds = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
-      return isBattery || (this.config.manual_entities || []).includes(id);
-    }).filter(id => !(this.config.exclude || []).includes(id));
+      return isBattery || manualList.includes(id);
+    }).filter(id => !excludeList.includes(id));
 
     return html`
       <div class="editor-container">
         
-        <ha-expansion-panel header="Header Design" outlined expanded>
+        <ha-expansion-panel header="Header Design" outlined>
           <div class="panel-content grid-2">
             <ha-textfield label="Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
             <ha-icon-picker .hass=${this.hass} .value=${this.config.title_icon || ''} label="Titel Icon" @value-changed=${(e) => this._changeValue('title_icon', e.detail.value)}></ha-icon-picker>
@@ -121,7 +129,7 @@ class BatteryModernCardEditor extends LitElement {
           </div>
         </ha-expansion-panel>
 
-        <ha-expansion-panel header="Filter & Entitäten bearbeiten" outlined>
+        <ha-expansion-panel header="Filter & Entitäten bearbeiten" outlined expanded>
           <div class="panel-content">
             <div class="switch-row">
                 <span>Battery+ Duplikate ausblenden</span>
@@ -129,11 +137,34 @@ class BatteryModernCardEditor extends LitElement {
             </div>
             
             <h4 class="section-title">Hinzufügen / Ausblenden</h4>
-            <ha-entity-picker .hass=${this.hass} label="Manuell hinzufügen (Include)" @value-changed=${(e) => this._addEntity('manual_entities', e.detail.value)}></ha-entity-picker>
-            <ha-entity-picker .hass=${this.hass} label="Dauerhaft ausblenden (Exclude)" @value-changed=${(e) => this._addEntity('exclude', e.detail.value)}></ha-entity-picker>
+            
+            <ha-entity-picker 
+              .hass=${this.hass} 
+              .value=${""}
+              label="Manuell hinzufügen (Include)" 
+              @value-changed=${(e) => { 
+                if(e.detail.value) {
+                  this._addEntity('manual_entities', e.detail.value); 
+                  e.target.value = ""; 
+                }
+              }}>
+            </ha-entity-picker>
+            
+            <ha-entity-picker 
+              .hass=${this.hass} 
+              .value=${""}
+              label="Dauerhaft ausblenden (Exclude)" 
+              @value-changed=${(e) => { 
+                if(e.detail.value) {
+                  this._addEntity('exclude', e.detail.value); 
+                  e.target.value = ""; 
+                }
+              }}>
+            </ha-entity-picker>
+
             <div class="chip-container">
-              ${this.config.exclude.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
-              ${this.config.manual_entities.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
+              ${excludeList.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
+              ${manualList.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
             </div>
           </div>
         </ha-expansion-panel>
@@ -144,7 +175,7 @@ class BatteryModernCardEditor extends LitElement {
             <div class="manual-list">
               ${currentIds.map(id => html`
                 <div class="manual-item-editor">
-                  <div class="ent-id">${this.hass.states[id].attributes.friendly_name || id}</div>
+                  <div class="ent-id">${this.hass.states[id]?.attributes?.friendly_name || id}</div>
                   <ha-textfield label="Label" .value="${this.config.custom_badges[id] || ''}" @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" placeholder="Automatik: ${this._getAutoCategory(id)}"></ha-textfield>
                 </div>
               `)}
@@ -181,9 +212,9 @@ class BatteryModernCardEditor extends LitElement {
       .ent-id { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: var(--primary-color); }
       .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
       .chip { padding: 4px 10px; border-radius: 16px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
-      .chip.exclude { background: #fee; border: 1px solid #fcc; color: #c00; }
-      .chip.include { background: #efe; border: 1px solid #cfc; color: #0c0; }
-      ha-textfield, ha-entity-picker, ha-icon-picker { width: 100%; }
+      .chip.exclude { background: rgba(244,67,54,0.1); border: 1px solid #f44336; color: #f44336; }
+      .chip.include { background: rgba(76,175,80,0.1); border: 1px solid #4caf50; color: #4caf50; }
+      ha-textfield, ha-entity-picker, ha-icon-picker { width: 100%; margin-bottom: 4px; }
       ha-icon { cursor: pointer; --mdc-icon-size: 16px; }
     `;
   }
@@ -228,7 +259,8 @@ class BatteryModernCard extends LitElement {
       return isBattery;
     });
     
-    const manualIds = this.config.manual_entities || [];
+    // Altlasten filtern
+    const manualIds = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
     const combinedIds = [...new Set([...autoEntities, ...manualIds])];
 
     const batteries = combinedIds
@@ -248,7 +280,6 @@ class BatteryModernCard extends LitElement {
     const critical = batteries.filter(b => b.state <= 40);
     const healthy = batteries.filter(b => b.state > 40);
 
-    // DYNAMIC CSS VARIABLES SYSTEM
     const globalStyles = `
       --c-header-bg: ${this.config.header_bg || 'transparent'};
       
@@ -325,7 +356,6 @@ class BatteryModernCard extends LitElement {
       
       .normal-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
       
-      /* Kritische Box Styling - Greift nur wenn aktiv (>0) */
       .warn-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
       .warn-box.active-warn { background: var(--c-warn-bg); border: var(--c-warn-border); }
       .warn-box.active-warn .warn-val { color: var(--c-warn-val); }
@@ -357,7 +387,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Ultimate Edition with Full CSS variables for Header, Stats and Rows.",
+    description: "Ultimate Edition with Bugfixes.",
     preview: true
   });
 }
