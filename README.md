@@ -2,16 +2,18 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGuard Card and my previous Proxmox HA Card. 
+A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGuard Card and my previous Proxmox HA Card. Designed as a "set-it-and-forget-it" tool, it features intelligent auto-discovery while offering ultimate customization capabilities.
 
 ## ✨ Features
 
-- **🚀 Smart Auto-Discovery:** Automatically scans your entire system for battery entities (via `device_class` or naming conventions).
-- **🏷️ Intelligent Categorization:** Automatically assigns badges to batteries based on their function (e.g., Windows, Climate, Presence, Smoke Detectors).
-- **🎨 Visual Accordion Editor:** Fully manage your card via the UI. No YAML knowledge required!
-- **🛠️ Manual Badge Overrides:** Assign custom labels (e.g., "Cellar", "Attic", "Guest Room") to any entity directly in the editor.
+- **🚀 Smart Auto-Discovery:** Automatically scans your entire system for battery entities via `device_class` or naming conventions.
+- **👆 Native Entity Navigation:** Click on any battery name in the list to instantly open its native Home Assistant "More-Info" dialog.
+- **🏷️ Intelligent Categorization:** Automatically assigns badges to batteries based on their function (e.g., Windows, Climate, Presence, Smoke, Water).
+- **🎨 Visual Accordion Editor:** Fully manage your card via the UI. No YAML knowledge required! Includes dedicated sections for layout, styling, and filtering.
+- **🛠️ Manual Include & Exclude:** Easily hide false positives (exclude) or manually add missing special entities with custom badges (e.g., "Cellar", "Guest Room").
+- **🔋 Battery Notes Filter:** Built-in toggle to automatically hide `battery+` duplicate entities created by the popular "Battery Notes" integration.
 - **👁️ Focus Mode:** Automatically hides healthy batteries (>40%) in a collapsible section, keeping your dashboard clean and actionable.
-- **💅 Full CSS Control:** Customize borders, shadows, colors, and sizes for every element (Header, Stat-Boxes, and Rows) to match your theme perfectly.
+- **💅 Ultimate Styling Control:** Customize colors and font sizes for every single text element (Titles, Stats, Names, Values) and tweak CSS shadows and borders to match your theme perfectly.
 - **📊 Real-time Stats:** Glanceable overview of total battery count and critical devices needing attention.
 
 ## 📥 Installation
@@ -55,9 +57,14 @@ The card detects the following categories automatically based on entity IDs and 
 ### Manual YAML Example
 ```yaml
 type: custom:battery-modern-card
-title: My Devices
+title: Haus Batterien
 title_icon: mdi:battery-check
+filter_battery_plus: true
 stat_shadow: "0 10px 20px rgba(0,0,0,0.1)"
+name_color: "var(--primary-color)"
+value_size: "1.2rem"
+exclude:
+  - sensor.ipad_battery_level
 manual_entities:
   - entity: sensor.special_device_battery
     badge: "Custom Label"
