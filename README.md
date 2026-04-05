@@ -6,14 +6,17 @@ A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGu
 
 ## ✨ Features
 
-- **🚀 Smart Auto-Discovery:** Automatically scans your entire system for battery entities via `device_class` or naming conventions.
+- **🚀 Smart Auto-Discovery:** Automatically scans your system for battery entities via `device_class` or naming conventions.
+- **🏷️ Intelligent Badge Priority:** Badges are assigned via a smart priority system:
+  1. **Manual Override:** Custom labels set by you in the editor (e.g., "Cellar").
+  2. **Auto-Category:** Detected function (e.g., "Window", "Climate", "Smoke").
+  3. **Fallback:** "Sonstiges" (Other).
 - **👆 Native Entity Navigation:** Click on any battery name in the list to instantly open its native Home Assistant "More-Info" dialog.
-- **🏷️ Intelligent Categorization:** Automatically assigns badges to batteries based on their function (e.g., Windows, Climate, Presence, Smoke, Water).
-- **🎨 Visual Accordion Editor:** Fully manage your card via the UI. No YAML knowledge required! Includes dedicated sections for layout, styling, and filtering.
-- **🛠️ Manual Include & Exclude:** Easily hide false positives (exclude) or manually add missing special entities with custom badges (e.g., "Cellar", "Guest Room").
+- **🎨 Visual Accordion Editor:** Fully manage your card via the UI. No YAML knowledge required! Includes dedicated sections for layout, styling, overrides, and filtering.
+- **🛠️ Manual Include & Exclude:** Easily hide false positives (exclude) or manually add missing special entities.
 - **🔋 Battery Notes Filter:** Built-in toggle to automatically hide `battery+` duplicate entities created by the popular "Battery Notes" integration.
-- **👁️ Focus Mode:** Automatically hides healthy batteries (>40%) in a collapsible section, keeping your dashboard clean and actionable.
-- **💅 Ultimate Styling Control:** Customize colors and font sizes for every single text element (Titles, Stats, Names, Values) and tweak CSS shadows and borders to match your theme perfectly.
+- **👁️ Focus Mode:** Automatically hides healthy batteries (>40%) in a collapsible accordion, keeping your dashboard clean and actionable.
+- **💅 Ultimate Styling Control:** Complete CSS variable support. Customize colors, font sizes, borders, backgrounds, and shadows for the Header, Normal Stats, **Critical Warning Box**, and Individual Rows.
 - **📊 Real-time Stats:** Glanceable overview of total battery count and critical devices needing attention.
 
 ## 📥 Installation
@@ -45,29 +48,30 @@ The easiest way to install this card is via the **Home Assistant Community Store
 
 The card is designed to work out-of-the-box. Just add it to your dashboard. If you want to customize it, use the **Visual Editor**.
 
-### Category Logic (Automatic)
-The card detects the following categories automatically based on entity IDs and friendly names:
-- **Presence:** Occupancy/Presence sensors.
-- **Window/Door:** Contact sensors.
-- **Climate:** Temperature/Humidity sensors.
-- **Locks:** Smart locks.
-- **Smoke:** Smoke detectors.
-- **Water:** Leak/Water sensors.
+### Manual YAML Example (For Power Users)
+Every setting available in the Visual Editor can also be set via YAML:
 
-### Manual YAML Example
 ```yaml
 type: custom:battery-modern-card
 title: Haus Batterien
 title_icon: mdi:battery-check
 filter_battery_plus: true
+
+# Styling
 stat_shadow: "0 10px 20px rgba(0,0,0,0.1)"
+stat_warn_bg: "rgba(244,67,54,0.1)"
+stat_warn_border: "1px solid #f44336"
 name_color: "var(--primary-color)"
 value_size: "1.2rem"
+
+# Entities & Badges
 exclude:
   - sensor.ipad_battery_level
 manual_entities:
-  - entity: sensor.special_device_battery
-    badge: "Custom Label"
+  - sensor.special_device_battery
+custom_badges:
+  sensor.kueche_fenster_battery: "Küchenfenster"
+  sensor.special_device_battery: "Keller"
 ````
 
 ## 🙏 Credits & Appreciation
