@@ -13,6 +13,7 @@ class BatteryModernCardEditor extends LitElement {
       ...config, 
       manual_entities: config.manual_entities || [],
       exclude: config.exclude || [],
+      custom_badges: config.custom_badges || {},
       filter_battery_plus: config.filter_battery_plus !== false 
     };
   }
@@ -23,40 +24,29 @@ class BatteryModernCardEditor extends LitElement {
     this._fireChanged();
   }
 
-  _toggleFilter(field) {
-    this._changeValue(field, !this.config[field]);
+  _updateBadgeOverride(entityId, badgeValue) {
+    const custom_badges = { ...this.config.custom_badges };
+    if (badgeValue && badgeValue.trim() !== "") {
+      custom_badges[entityId] = badgeValue;
+    } else {
+      delete custom_badges[entityId];
+    }
+    this._changeValue('custom_badges', custom_badges);
   }
 
-  // --- Manuelles Hinzufügen ---
-  _addManualEntity(entityId) {
+  _addEntity(field, entityId) {
     if(!entityId) return;
-    const manual = [...this.config.manual_entities, { entity: entityId, badge: "" }];
-    this._changeValue('manual_entities', manual);
+    const list = [...this.config[field]];
+    if (!list.includes(entityId)) {
+      list.push(entityId);
+      this._changeValue(field, list);
+    }
   }
 
-  _updateManualBadge(index, badgeValue) {
-    const manual = [...this.config.manual_entities];
-    manual[index] = { ...manual[index], badge: badgeValue };
-    this._changeValue('manual_entities', manual);
-  }
-
-  _removeManual(index) {
-    const manual = [...this.config.manual_entities];
-    manual.splice(index, 1);
-    this._changeValue('manual_entities', manual);
-  }
-
-  // --- Manuelles Ausschließen ---
-  _addExcludeEntity(entityId) {
-    if(!entityId || this.config.exclude.includes(entityId)) return;
-    const exclude = [...this.config.exclude, entityId];
-    this._changeValue('exclude', exclude);
-  }
-
-  _removeExclude(index) {
-    const exclude = [...this.config.exclude];
-    exclude.splice(index, 1);
-    this._changeValue('exclude', exclude);
+  _removeEntity(field, index) {
+    const list = [...this.config[field]];
+    list.splice(index, 1);
+    this._changeValue(field, list);
   }
 
   _fireChanged() {
@@ -71,65 +61,54 @@ class BatteryModernCardEditor extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
 
+    // Liste aller aktuell auf der Karte sichtbaren IDs für die Badge-Zuordnung
+    const currentIds = Object.keys(this.hass.states).filter(id => {
+      const s = this.hass.states[id];
+      const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
+      return isBattery || (this.config.manual_entities || []).includes(id);
+    }).filter(id => !(this.config.exclude || []).includes(id));
+
     return html`
       <div class="editor-container">
         
-        <ha-expansion-panel header="Header Design" outlined expanded>
+        <ha-expansion-panel header="Header & Text Styling" outlined expanded>
           <div class="panel-content grid-2">
-            <ha-textfield label="Karten-Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
             <ha-icon-picker .hass=${this.hass} .value=${this.config.title_icon || ''} label="Titel Icon" @value-changed=${(e) => this._changeValue('title_icon', e.detail.value)}></ha-icon-picker>
             <ha-textfield label="Titel Farbe" .value="${this.config.title_color || ''}" @input="${(e) => this._changeValue('title_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Titel Größe" .value="${this.config.title_size || ''}" @input="${(e) => this._changeValue('title_size', e.target.value)}"></ha-textfield>
-          </div>
-        </ha-expansion-panel>
-
-        <ha-expansion-panel header="Text & Schatten Styling" outlined>
-          <div class="panel-content grid-2">
             <ha-textfield label="Stat-Zahl Farbe" .value="${this.config.stat_value_color || ''}" @input="${(e) => this._changeValue('stat_value_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Stat-Zahl Größe" .value="${this.config.stat_value_size || ''}" @input="${(e) => this._changeValue('stat_value_size', e.target.value)}"></ha-textfield>
-            
-            <ha-textfield label="Stat-Label Farbe" .value="${this.config.stat_label_color || ''}" @input="${(e) => this._changeValue('stat_label_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Stat-Label Größe" .value="${this.config.stat_label_size || ''}" @input="${(e) => this._changeValue('stat_label_size', e.target.value)}"></ha-textfield>
-            
             <ha-textfield label="Batterie-Name Farbe" .value="${this.config.name_color || ''}" @input="${(e) => this._changeValue('name_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Batterie-Name Größe" .value="${this.config.name_size || ''}" @input="${(e) => this._changeValue('name_size', e.target.value)}"></ha-textfield>
-            
-            <ha-textfield label="Prozent-Wert Farbe" .value="${this.config.value_color || ''}" @input="${(e) => this._changeValue('value_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Prozent-Wert Größe" .value="${this.config.value_size || ''}" @input="${(e) => this._changeValue('value_size', e.target.value)}"></ha-textfield>
-            
-            <ha-textfield label="Stat-Box Schatten" .value="${this.config.stat_shadow || ''}" @input="${(e) => this._changeValue('stat_shadow', e.target.value)}" placeholder="0 4px 12px rgba(0,0,0,0.05)"></ha-textfield>
-            <ha-textfield label="Zeilen Schatten" .value="${this.config.row_shadow || ''}" @input="${(e) => this._changeValue('row_shadow', e.target.value)}" placeholder="0 2px 6px rgba(0,0,0,0.03)"></ha-textfield>
+            <ha-textfield label="Zeilen Schatten" .value="${this.config.row_shadow || ''}" @input="${(e) => this._changeValue('row_shadow', e.target.value)}"></ha-textfield>
           </div>
         </ha-expansion-panel>
 
-        <ha-expansion-panel header="Ausschließen & Filter" outlined>
+        <ha-expansion-panel header="Badge Overrides (Manuelle Label)" outlined>
           <div class="panel-content">
-            <div class="switch-row">
-                <span>Battery+ Duplikate ausblenden</span>
-                <ha-switch .checked=${this.config.filter_battery_plus} @change=${() => this._toggleFilter('filter_battery_plus')}></ha-switch>
-            </div>
-            <ha-entity-picker .hass=${this.hass} label="Entität dauerhaft ausblenden" @value-changed=${(e) => this._addExcludeEntity(e.detail.value)}></ha-entity-picker>
-            <div class="chip-container">
-                ${this.config.exclude.map((ent, i) => html`
-                    <div class="chip">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeExclude(i)}></ha-icon></div>
-                `)}
-            </div>
-          </div>
-        </ha-expansion-panel>
-
-        <ha-expansion-panel header="Manuell Hinzufügen & Badges" outlined>
-          <div class="panel-content">
-            <ha-entity-picker .hass=${this.hass} label="Fehlende Entität hinzufügen" @value-changed=${(e) => this._addManualEntity(e.detail.value)}></ha-entity-picker>
+            <p class="info-text">Hier kannst du für jede Batterie das Label überschreiben. Prio: Manuell > Automatik > Sonstiges.</p>
             <div class="manual-list">
-                ${this.config.manual_entities.map((ent, i) => html`
-                    <div class="manual-item-editor">
-                      <div class="manual-header">
-                        <span class="ent-id">${ent.entity}</span>
-                        <ha-icon icon="mdi:delete" @click=${() => this._removeManual(i)}></ha-icon>
-                      </div>
-                      <ha-textfield label="Manuelles Badge (z.B. Küche)" .value="${ent.badge || ''}" @input="${(e) => this._updateManualBadge(i, e.target.value)}"></ha-textfield>
-                    </div>
-                `)}
+              ${currentIds.map(id => html`
+                <div class="manual-item-editor">
+                  <div class="ent-id">${this.hass.states[id].attributes.friendly_name || id}</div>
+                  <ha-textfield 
+                    label="Manuelles Badge" 
+                    .value="${this.config.custom_badges[id] || ''}" 
+                    @input="${(e) => this._updateBadgeOverride(id, e.target.value)}"
+                    placeholder="Automatik: ${this._getAutoCategory(id)}">
+                  </ha-textfield>
+                </div>
+              `)}
+            </div>
+          </div>
+        </ha-expansion-panel>
+
+        <ha-expansion-panel header="Entitäten (Hinzufügen / Ausblenden)" outlined>
+          <div class="panel-content">
+            <ha-entity-picker .hass=${this.hass} label="Entität manuell hinzufügen" @value-changed=${(e) => this._addEntity('manual_entities', e.detail.value)}></ha-entity-picker>
+            <ha-entity-picker .hass=${this.hass} label="Entität ausblenden (Exclude)" @value-changed=${(e) => this._addEntity('exclude', e.detail.value)}></ha-entity-picker>
+            
+            <div class="chip-container">
+              ${this.config.exclude.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
+              ${this.config.manual_entities.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
             </div>
           </div>
         </ha-expansion-panel>
@@ -138,21 +117,33 @@ class BatteryModernCardEditor extends LitElement {
     `;
   }
 
+  // Hilfsfunktion für den Editor-Platzhalter
+  _getAutoCategory(id) {
+    const s = this.hass.states[id];
+    const text = (id + " " + (s?.attributes?.friendly_name || "")).toLowerCase();
+    if (text.includes("presence") || text.includes("anwesenheit")) return "Anwesenheit";
+    if (text.includes("window") || text.includes("fenster") || text.includes("door")) return "Fenster/Tür";
+    if (text.includes("temp") || text.includes("klima")) return "Klima";
+    if (text.includes("smoke") || text.includes("rauch")) return "Rauch";
+    if (text.includes("water") || text.includes("wasser")) return "Wasser";
+    return "Sonstiges";
+  }
+
   static get styles() {
     return css`
       .editor-container { display: flex; flex-direction: column; gap: 12px; }
       .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .panel-content { padding: 12px 0; }
-      .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; font-weight: 500; }
-      .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-      .chip { background: var(--secondary-background-color); padding: 4px 10px; border-radius: 16px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
-      .manual-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
+      .info-text { font-size: 0.85rem; color: var(--secondary-text-color); margin-bottom: 12px; }
+      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
       .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); }
-      .manual-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-      .ent-id { font-size: 0.8rem; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+      .ent-id { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: var(--primary-color); }
+      .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+      .chip { padding: 4px 10px; border-radius: 16px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
+      .chip.exclude { background: #fee; border: 1px solid #fcc; color: #c00; }
+      .chip.include { background: #efe; border: 1px solid #cfc; color: #0c0; }
       ha-textfield, ha-entity-picker, ha-icon-picker { width: 100%; }
       ha-icon { cursor: pointer; --mdc-icon-size: 16px; }
-      .manual-header ha-icon { color: var(--error-color); --mdc-icon-size: 20px; }
     `;
   }
 }
@@ -163,32 +154,31 @@ class BatteryModernCard extends LitElement {
   static get properties() { return { hass: {}, config: {} }; }
 
   static getConfigElement() { return document.createElement("battery-modern-card-editor"); }
-
-  static getStubConfig() { return { title: "Batteriestatus", filter_battery_plus: true, exclude: [], manual_entities: [] }; }
+  static getStubConfig() { return { title: "Batteriestatus", filter_battery_plus: true, manual_entities: [], exclude: [], custom_badges: {} }; }
 
   setConfig(config) { this.config = config; }
 
-  // More-Info Dialog öffnen
   _handleMoreInfo(entityId) {
-    const event = new CustomEvent("hass-more-info", {
-      bubbles: true,
-      composed: true,
-      detail: { entityId: entityId }
-    });
+    const event = new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: entityId } });
     this.dispatchEvent(event);
   }
 
   _getCategory(entityId, friendlyName) {
-    const manual = (this.config.manual_entities || []).find(e => e.entity === entityId);
-    if (manual && manual.badge) return manual.badge;
+    // 1. PRIO: Manuelles Badge aus den custom_badges
+    if (this.config.custom_badges && this.config.custom_badges[entityId]) {
+      return this.config.custom_badges[entityId];
+    }
 
+    // 2. PRIO: Automatik Logik
     const text = (entityId + " " + (friendlyName || "")).toLowerCase();
-    if (text.includes("presence") || text.includes("anwesenheit")) return "Anwesenheit";
+    if (text.includes("presence") || text.includes("anwesenheit") || text.includes("occupancy")) return "Anwesenheit";
     if (text.includes("window") || text.includes("fenster") || text.includes("door") || text.includes("tür")) return "Fenster/Tür";
-    if (text.includes("temp") || text.includes("klima") || text.includes("hum")) return "Klima";
+    if (text.includes("temp") || text.includes("klima") || text.includes("hum") || text.includes("feucht")) return "Klima";
+    if (text.includes("lock") || text.includes("schloss") || text.includes("riegel")) return "Schloss";
     if (text.includes("smoke") || text.includes("rauch")) return "Rauch";
-    if (text.includes("lock") || text.includes("schloss")) return "Schloss";
     if (text.includes("water") || text.includes("wasser") || text.includes("leak")) return "Wasser";
+
+    // 3. PRIO: Fallback
     return "Sonstiges";
   }
 
@@ -196,24 +186,15 @@ class BatteryModernCard extends LitElement {
     if (!this.hass || !this.config) return html``;
 
     const excludeList = this.config.exclude || [];
-
-    // Auto Discovery
     const autoEntities = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
-      
       if (excludeList.includes(id)) return false;
-
-      if (this.config.filter_battery_plus) {
-        if (id.toLowerCase().endsWith('battery+') || (s.attributes.friendly_name || "").toLowerCase().endsWith('battery+')) {
-          return false;
-        }
-      }
+      if (this.config.filter_battery_plus && (id.toLowerCase().endsWith('battery+') || (s.attributes.friendly_name || "").toLowerCase().endsWith('battery+'))) return false;
       return isBattery;
     });
     
-    // Manual Entities
-    const manualIds = (this.config.manual_entities || []).map(e => e.entity);
+    const manualIds = this.config.manual_entities || [];
     const combinedIds = [...new Set([...autoEntities, ...manualIds])];
 
     const batteries = combinedIds
@@ -291,12 +272,9 @@ class BatteryModernCard extends LitElement {
       .list { display: flex; flex-direction: column; gap: 12px; }
       .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--ha-card-background, white); box-shadow: var(--c-shadow); }
       .info { flex-grow: 1; margin-left: 16px; overflow: hidden; }
-      
-      /* Neu: Klickbarer Name */
-      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; transition: color 0.2s; }
+      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
       .clickable { cursor: pointer; }
       .clickable:hover { color: var(--primary-color) !important; text-decoration: underline; }
-      
       .badge { font-size: 0.7rem; background: var(--secondary-background-color); padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px; color: var(--secondary-text-color); font-weight: bold; }
       .val { font-weight: bold; font-size: 1.1rem; }
       .panel { margin-top: 16px; border-radius: 12px; }
@@ -306,14 +284,10 @@ class BatteryModernCard extends LitElement {
 
 customElements.define("battery-modern-card", BatteryModernCard);
 
-// Registrierung
 window.customCards = window.customCards || [];
-const cardExists = window.customCards.some(c => c.type === "battery-modern-card");
-if (!cardExists) {
-  window.customCards.push({
-    type: "battery-modern-card",
-    name: "Battery Modern Card",
-    description: "Modern style battery monitor with Full Styling and Entity Navigation.",
-    preview: true
-  });
-}
+window.customCards.push({
+  type: "battery-modern-card",
+  name: "Battery Modern Card",
+  description: "Modern style battery monitor with dynamic badge overrides and navigation.",
+  preview: true
+});
