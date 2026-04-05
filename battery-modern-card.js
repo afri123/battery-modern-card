@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "https://unpkg.com,lit-element@2.4.0/lit-element.js?module";
+import { LitElement, html, css } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
 // --- VISUELLER EDITOR (PRO) ---
 class BatteryModernCardEditor extends LitElement {
@@ -114,14 +114,14 @@ class BatteryModernCard extends LitElement {
 
   static getConfigElement() { return document.createElement("battery-modern-card-editor"); }
 
+  static getStubConfig() { return { title: "Batteriestatus", manual_entities: [] }; }
+
   setConfig(config) { this.config = config; }
 
   _getCategory(entityId, friendlyName) {
-    // Falls manuell konfiguriert
     const manual = (this.config.manual_entities || []).find(e => e.entity === entityId);
     if (manual && manual.badge) return manual.badge;
 
-    // Automatik
     const text = (entityId + " " + (friendlyName || "")).toLowerCase();
     if (text.includes("presence") || text.includes("anwesenheit") || text.includes("occupancy")) return "Anwesenheit";
     if (text.includes("window") || text.includes("fenster") || text.includes("door") || text.includes("tür")) return "Fenster/Tür";
@@ -166,7 +166,7 @@ class BatteryModernCard extends LitElement {
     return html`
       <ha-card>
         <div class="header" style="color: ${this.config.title_color || ''}; font-size: ${this.config.title_size || ''};">
-          ${this.config.title_icon ? html`<ha-icon icon="${this.config.title_icon}"></ha-icon>` : ''}
+          ${this.config.title_icon ? html`<ha-icon icon="${this.config.title_icon}" style="margin-right:12px;"></ha-icon>` : ''}
           ${this.config.title || 'Batteriestatus'}
         </div>
 
@@ -203,7 +203,7 @@ class BatteryModernCard extends LitElement {
 
   static get styles() {
     return css`
-      .header { padding: 24px 16px 16px; display: flex; align-items: center; gap: 12px; font-weight: 400; }
+      .header { padding: 24px 16px 16px; display: flex; align-items: center; font-size: 24px; }
       .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 20px; }
       .box { border-radius: 12px; padding: 20px; text-align: center; background: var(--ha-card-background, white); border: var(--c-border); box-shadow: var(--c-shadow); display: flex; flex-direction: column; }
       .box.warn { border: 1px solid #f44336; }
@@ -220,7 +220,14 @@ class BatteryModernCard extends LitElement {
     `;
   }
 }
+
 customElements.define("battery-modern-card", BatteryModernCard);
 
+// --- DIESER TEIL IST ENTSCHEIDEND FÜR DAS MENÜ ---
 window.customCards = window.customCards || [];
-window.customCards.push({ type: "battery-modern-card", name: "Battery Modern Card (Pro + Badge Edit)", preview: true });
+window.customCards.push({
+  type: "battery-modern-card",
+  name: "Battery Modern Card",
+  description: "Stylische Karte zur Überwachung von Batterien mit Auto-Discovery und Badge-System.",
+  preview: true
+});
