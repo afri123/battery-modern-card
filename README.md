@@ -1,6 +1,7 @@
 # Battery Modern Card for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/afri123/battery-modern-card?style=for-the-badge)](https://github.com/afri123/battery-modern-card/releases)
 
 A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGuard Card and my previous Proxmox HA Card. Designed as a "set-it-and-forget-it" tool, it features intelligent auto-discovery while offering ultimate customization capabilities.
 
