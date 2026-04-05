@@ -24,6 +24,10 @@ class BatteryModernCardEditor extends LitElement {
     this._fireChanged();
   }
 
+  _toggleFilter(field) {
+    this._changeValue(field, !this.config[field]);
+  }
+
   _updateBadgeOverride(entityId, badgeValue) {
     const custom_badges = { ...this.config.custom_badges };
     if (badgeValue && badgeValue.trim() !== "") {
@@ -61,7 +65,6 @@ class BatteryModernCardEditor extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
 
-    // Liste aller aktuell auf der Karte sichtbaren IDs für die Badge-Zuordnung
     const currentIds = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
@@ -71,44 +74,80 @@ class BatteryModernCardEditor extends LitElement {
     return html`
       <div class="editor-container">
         
-        <ha-expansion-panel header="Header & Text Styling" outlined expanded>
+        <ha-expansion-panel header="Header Design" outlined expanded>
           <div class="panel-content grid-2">
             <ha-textfield label="Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
             <ha-icon-picker .hass=${this.hass} .value=${this.config.title_icon || ''} label="Titel Icon" @value-changed=${(e) => this._changeValue('title_icon', e.detail.value)}></ha-icon-picker>
-            <ha-textfield label="Titel Farbe" .value="${this.config.title_color || ''}" @input="${(e) => this._changeValue('title_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Stat-Zahl Farbe" .value="${this.config.stat_value_color || ''}" @input="${(e) => this._changeValue('stat_value_color', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Hintergrund (CSS)" .value="${this.config.header_bg || ''}" @input="${(e) => this._changeValue('header_bg', e.target.value)}" placeholder="transparent"></ha-textfield>
+            <div style="display:flex; gap:10px;">
+              <ha-textfield label="Titel Farbe" .value="${this.config.title_color || ''}" @input="${(e) => this._changeValue('title_color', e.target.value)}"></ha-textfield>
+              <ha-textfield label="Titel Größe" .value="${this.config.title_size || ''}" @input="${(e) => this._changeValue('title_size', e.target.value)}"></ha-textfield>
+            </div>
+          </div>
+        </ha-expansion-panel>
+
+        <ha-expansion-panel header="Statistik-Boxen Design" outlined>
+          <div class="panel-content">
+            <h4 class="section-title">Normale Box (Gesamt)</h4>
+            <div class="grid-2">
+              <ha-textfield label="Hintergrund" .value="${this.config.stat_bg || ''}" @input="${(e) => this._changeValue('stat_bg', e.target.value)}"></ha-textfield>
+              <ha-textfield label="Rahmen (Border)" .value="${this.config.stat_border || ''}" @input="${(e) => this._changeValue('stat_border', e.target.value)}" placeholder="none"></ha-textfield>
+              <ha-textfield label="Zahl Farbe" .value="${this.config.stat_value_color || ''}" @input="${(e) => this._changeValue('stat_value_color', e.target.value)}"></ha-textfield>
+              <ha-textfield label="Label Farbe" .value="${this.config.stat_label_color || ''}" @input="${(e) => this._changeValue('stat_label_color', e.target.value)}"></ha-textfield>
+            </div>
+            
+            <h4 class="section-title critical-title">Kritische Box (Warnung)</h4>
+            <div class="grid-2">
+              <ha-textfield label="Hintergrund (Kritisch)" .value="${this.config.stat_warn_bg || ''}" @input="${(e) => this._changeValue('stat_warn_bg', e.target.value)}" placeholder="z.B. rgba(244,67,54,0.1)"></ha-textfield>
+              <ha-textfield label="Rahmen (Kritisch)" .value="${this.config.stat_warn_border || ''}" @input="${(e) => this._changeValue('stat_warn_border', e.target.value)}" placeholder="1px solid #f44336"></ha-textfield>
+              <ha-textfield label="Zahl Farbe (Kritisch)" .value="${this.config.stat_warn_value_color || ''}" @input="${(e) => this._changeValue('stat_warn_value_color', e.target.value)}" placeholder="#f44336"></ha-textfield>
+              <ha-textfield label="Label Farbe (Kritisch)" .value="${this.config.stat_warn_label_color || ''}" @input="${(e) => this._changeValue('stat_warn_label_color', e.target.value)}"></ha-textfield>
+            </div>
+            
+            <h4 class="section-title">Allgemein</h4>
+            <ha-textfield label="Schatten für beide Boxen" .value="${this.config.stat_shadow || ''}" @input="${(e) => this._changeValue('stat_shadow', e.target.value)}" placeholder="0 4px 12px rgba(0,0,0,0.05)"></ha-textfield>
+          </div>
+        </ha-expansion-panel>
+
+        <ha-expansion-panel header="Batterie-Zeilen Design" outlined>
+          <div class="panel-content grid-2">
+            <ha-textfield label="Zeilen Hintergrund" .value="${this.config.row_bg || ''}" @input="${(e) => this._changeValue('row_bg', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Zeilen Rahmen" .value="${this.config.row_border || ''}" @input="${(e) => this._changeValue('row_border', e.target.value)}"></ha-textfield>
             <ha-textfield label="Batterie-Name Farbe" .value="${this.config.name_color || ''}" @input="${(e) => this._changeValue('name_color', e.target.value)}"></ha-textfield>
-            <ha-textfield label="Zeilen Schatten" .value="${this.config.row_shadow || ''}" @input="${(e) => this._changeValue('row_shadow', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Batterie-Name Größe" .value="${this.config.name_size || ''}" @input="${(e) => this._changeValue('name_size', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Prozent-Wert Farbe" .value="${this.config.value_color || ''}" @input="${(e) => this._changeValue('value_color', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Prozent-Wert Größe" .value="${this.config.value_size || ''}" @input="${(e) => this._changeValue('value_size', e.target.value)}"></ha-textfield>
+            <ha-textfield label="Zeilen Schatten" .value="${this.config.row_shadow || ''}" @input="${(e) => this._changeValue('row_shadow', e.target.value)}" placeholder="0 2px 6px rgba(0,0,0,0.03)" style="grid-column: span 2;"></ha-textfield>
+          </div>
+        </ha-expansion-panel>
+
+        <ha-expansion-panel header="Filter & Entitäten bearbeiten" outlined>
+          <div class="panel-content">
+            <div class="switch-row">
+                <span>Battery+ Duplikate ausblenden</span>
+                <ha-switch .checked=${this.config.filter_battery_plus} @change=${() => this._toggleFilter('filter_battery_plus')}></ha-switch>
+            </div>
+            
+            <h4 class="section-title">Hinzufügen / Ausblenden</h4>
+            <ha-entity-picker .hass=${this.hass} label="Manuell hinzufügen (Include)" @value-changed=${(e) => this._addEntity('manual_entities', e.detail.value)}></ha-entity-picker>
+            <ha-entity-picker .hass=${this.hass} label="Dauerhaft ausblenden (Exclude)" @value-changed=${(e) => this._addEntity('exclude', e.detail.value)}></ha-entity-picker>
+            <div class="chip-container">
+              ${this.config.exclude.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
+              ${this.config.manual_entities.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
+            </div>
           </div>
         </ha-expansion-panel>
 
         <ha-expansion-panel header="Badge Overrides (Manuelle Label)" outlined>
           <div class="panel-content">
-            <p class="info-text">Hier kannst du für jede Batterie das Label überschreiben. Prio: Manuell > Automatik > Sonstiges.</p>
+            <p class="info-text">Prio: Manuell > Automatik > Sonstiges.</p>
             <div class="manual-list">
               ${currentIds.map(id => html`
                 <div class="manual-item-editor">
                   <div class="ent-id">${this.hass.states[id].attributes.friendly_name || id}</div>
-                  <ha-textfield 
-                    label="Manuelles Badge" 
-                    .value="${this.config.custom_badges[id] || ''}" 
-                    @input="${(e) => this._updateBadgeOverride(id, e.target.value)}"
-                    placeholder="Automatik: ${this._getAutoCategory(id)}">
-                  </ha-textfield>
+                  <ha-textfield label="Label" .value="${this.config.custom_badges[id] || ''}" @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" placeholder="Automatik: ${this._getAutoCategory(id)}"></ha-textfield>
                 </div>
               `)}
-            </div>
-          </div>
-        </ha-expansion-panel>
-
-        <ha-expansion-panel header="Entitäten (Hinzufügen / Ausblenden)" outlined>
-          <div class="panel-content">
-            <ha-entity-picker .hass=${this.hass} label="Entität manuell hinzufügen" @value-changed=${(e) => this._addEntity('manual_entities', e.detail.value)}></ha-entity-picker>
-            <ha-entity-picker .hass=${this.hass} label="Entität ausblenden (Exclude)" @value-changed=${(e) => this._addEntity('exclude', e.detail.value)}></ha-entity-picker>
-            
-            <div class="chip-container">
-              ${this.config.exclude.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
-              ${this.config.manual_entities.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
             </div>
           </div>
         </ha-expansion-panel>
@@ -117,7 +156,6 @@ class BatteryModernCardEditor extends LitElement {
     `;
   }
 
-  // Hilfsfunktion für den Editor-Platzhalter
   _getAutoCategory(id) {
     const s = this.hass.states[id];
     const text = (id + " " + (s?.attributes?.friendly_name || "")).toLowerCase();
@@ -134,8 +172,11 @@ class BatteryModernCardEditor extends LitElement {
       .editor-container { display: flex; flex-direction: column; gap: 12px; }
       .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .panel-content { padding: 12px 0; }
+      .section-title { margin: 16px 0 8px; font-size: 0.9rem; color: var(--primary-color); border-bottom: 1px solid var(--divider-color); padding-bottom: 4px; }
+      .critical-title { color: var(--error-color); }
+      .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; font-weight: 500; }
       .info-text { font-size: 0.85rem; color: var(--secondary-text-color); margin-bottom: 12px; }
-      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
       .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); }
       .ent-id { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: var(--primary-color); }
       .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
@@ -164,12 +205,7 @@ class BatteryModernCard extends LitElement {
   }
 
   _getCategory(entityId, friendlyName) {
-    // 1. PRIO: Manuelles Badge aus den custom_badges
-    if (this.config.custom_badges && this.config.custom_badges[entityId]) {
-      return this.config.custom_badges[entityId];
-    }
-
-    // 2. PRIO: Automatik Logik
+    if (this.config.custom_badges && this.config.custom_badges[entityId]) return this.config.custom_badges[entityId];
     const text = (entityId + " " + (friendlyName || "")).toLowerCase();
     if (text.includes("presence") || text.includes("anwesenheit") || text.includes("occupancy")) return "Anwesenheit";
     if (text.includes("window") || text.includes("fenster") || text.includes("door") || text.includes("tür")) return "Fenster/Tür";
@@ -177,8 +213,6 @@ class BatteryModernCard extends LitElement {
     if (text.includes("lock") || text.includes("schloss") || text.includes("riegel")) return "Schloss";
     if (text.includes("smoke") || text.includes("rauch")) return "Rauch";
     if (text.includes("water") || text.includes("wasser") || text.includes("leak")) return "Wasser";
-
-    // 3. PRIO: Fallback
     return "Sonstiges";
   }
 
@@ -214,25 +248,43 @@ class BatteryModernCard extends LitElement {
     const critical = batteries.filter(b => b.state <= 40);
     const healthy = batteries.filter(b => b.state > 40);
 
+    // DYNAMIC CSS VARIABLES SYSTEM
+    const globalStyles = `
+      --c-header-bg: ${this.config.header_bg || 'transparent'};
+      
+      --c-stat-bg: ${this.config.stat_bg || 'var(--ha-card-background, white)'};
+      --c-stat-border: ${this.config.stat_border || 'none'};
+      --c-stat-shadow: ${this.config.stat_shadow || '0 4px 12px rgba(0,0,0,0.05)'};
+      
+      --c-warn-bg: ${this.config.stat_warn_bg || 'var(--ha-card-background, white)'};
+      --c-warn-border: ${this.config.stat_warn_border || '1px solid #f44336'};
+      --c-warn-val: ${this.config.stat_warn_value_color || '#f44336'};
+      --c-warn-label: ${this.config.stat_warn_label_color || 'var(--secondary-text-color)'};
+      
+      --c-row-bg: ${this.config.row_bg || 'var(--ha-card-background, white)'};
+      --c-row-border: ${this.config.row_border || 'none'};
+      --c-row-shadow: ${this.config.row_shadow || '0 2px 6px rgba(0,0,0,0.03)'};
+    `;
+
     return html`
-      <ha-card>
-        <div class="header" style="color: ${this.config.title_color || ''}; font-size: ${this.config.title_size || ''};">
+      <ha-card style="${globalStyles}">
+        <div class="header" style="background: var(--c-header-bg); color: ${this.config.title_color || ''}; font-size: ${this.config.title_size || ''};">
           ${this.config.title_icon ? html`<ha-icon icon="${this.config.title_icon}" style="margin-right:12px;"></ha-icon>` : ''}
           ${this.config.title || 'Batteriestatus'}
         </div>
 
-        <div class="stats" style="--c-shadow: ${this.config.stat_shadow || '0 4px 12px rgba(0,0,0,0.05)'};">
-          <div class="box">
+        <div class="stats">
+          <div class="box normal-box">
             <span style="color: ${this.config.stat_value_color || ''}; font-size: ${this.config.stat_value_size || ''};">${batteries.length}</span>
             <label style="color: ${this.config.stat_label_color || ''}; font-size: ${this.config.stat_label_size || ''};">Gesamt</label>
           </div>
-          <div class="box ${critical.length > 0 ? 'warn' : ''}">
-            <span style="color: ${critical.length > 0 ? '#f44336' : (this.config.stat_value_color || '')}; font-size: ${this.config.stat_value_size || ''};">${critical.length}</span>
-            <label style="color: ${this.config.stat_label_color || ''}; font-size: ${this.config.stat_label_size || ''};">Kritisch</label>
+          <div class="box warn-box ${critical.length > 0 ? 'active-warn' : ''}">
+            <span class="warn-val">${critical.length}</span>
+            <label class="warn-lbl">Kritisch</label>
           </div>
         </div>
 
-        <div class="content" style="--c-shadow: ${this.config.row_shadow || '0 2px 6px rgba(0,0,0,0.03)'};">
+        <div class="content">
           <div class="list">${critical.map(b => this._renderItem(b))}</div>
           ${healthy.length > 0 ? html`
             <ha-expansion-panel header="OK (${healthy.length})" outlined class="panel">
@@ -245,36 +297,51 @@ class BatteryModernCard extends LitElement {
   }
 
   _renderItem(b) {
-    const color = b.state <= 20 ? "#f44336" : (b.state <= 40 ? "#ff9800" : "#4caf50");
+    const iconColor = b.state <= 20 ? "#f44336" : (b.state <= 40 ? "#ff9800" : "#4caf50");
     return html`
       <div class="item">
-        <ha-icon icon="mdi:battery${b.state <= 10 ? '-outline' : (b.state >= 95 ? '' : '-' + Math.round(b.state/10)*10)}" style="color: ${color}"></ha-icon>
+        <ha-icon icon="mdi:battery${b.state <= 10 ? '-outline' : (b.state >= 95 ? '' : '-' + Math.round(b.state/10)*10)}" style="color: ${iconColor}"></ha-icon>
         <div class="info">
           <div class="name clickable" @click=${() => this._handleMoreInfo(b.id)} style="color: ${this.config.name_color || ''}; font-size: ${this.config.name_size || ''};">
             ${b.name}
           </div>
           <div class="badge">${b.category}</div>
         </div>
-        <div class="val" style="color: ${this.config.value_color || color}; font-size: ${this.config.value_size || ''};">${b.state}%</div>
+        <div class="val" style="color: ${this.config.value_color || iconColor}; font-size: ${this.config.value_size || ''};">${b.state}%</div>
       </div>
     `;
   }
 
   static get styles() {
     return css`
+      ha-card { overflow: hidden; }
       .header { padding: 24px 16px 16px; display: flex; align-items: center; font-size: 24px; font-weight: 400; }
+      
       .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 20px; }
-      .box { border-radius: 12px; padding: 20px; text-align: center; background: var(--ha-card-background, white); box-shadow: var(--c-shadow); display: flex; flex-direction: column; }
-      .box.warn { border: 1px solid #f44336; }
+      .box { border-radius: 12px; padding: 20px; text-align: center; display: flex; flex-direction: column; box-shadow: var(--c-stat-shadow); transition: transform 0.2s; }
+      .box:hover { transform: translateY(-2px); }
       .box span { font-size: 2.2rem; font-weight: 500; }
       .box label { font-size: 0.8rem; color: var(--secondary-text-color); text-transform: uppercase; font-weight: 600; }
+      
+      .normal-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
+      
+      /* Kritische Box Styling - Greift nur wenn aktiv (>0) */
+      .warn-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
+      .warn-box.active-warn { background: var(--c-warn-bg); border: var(--c-warn-border); }
+      .warn-box.active-warn .warn-val { color: var(--c-warn-val); }
+      .warn-box.active-warn .warn-lbl { color: var(--c-warn-label); }
+      
       .content { padding: 0 16px 16px; }
       .list { display: flex; flex-direction: column; gap: 12px; }
-      .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--ha-card-background, white); box-shadow: var(--c-shadow); }
+      
+      .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--c-row-bg); border: var(--c-row-border); box-shadow: var(--c-row-shadow); transition: transform 0.1s; }
+      .item:hover { transform: translateY(-1px); filter: brightness(0.98); }
       .info { flex-grow: 1; margin-left: 16px; overflow: hidden; }
-      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+      
+      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; transition: color 0.2s; }
       .clickable { cursor: pointer; }
       .clickable:hover { color: var(--primary-color) !important; text-decoration: underline; }
+      
       .badge { font-size: 0.7rem; background: var(--secondary-background-color); padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px; color: var(--secondary-text-color); font-weight: bold; }
       .val { font-weight: bold; font-size: 1.1rem; }
       .panel { margin-top: 16px; border-radius: 12px; }
@@ -285,9 +352,12 @@ class BatteryModernCard extends LitElement {
 customElements.define("battery-modern-card", BatteryModernCard);
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "battery-modern-card",
-  name: "Battery Modern Card",
-  description: "Modern style battery monitor with dynamic badge overrides and navigation.",
-  preview: true
-});
+const cardExists = window.customCards.some(c => c.type === "battery-modern-card");
+if (!cardExists) {
+  window.customCards.push({
+    type: "battery-modern-card",
+    name: "Battery Modern Card",
+    description: "Ultimate Edition with Full CSS variables for Header, Stats and Rows.",
+    preview: true
+  });
+}
