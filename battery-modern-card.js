@@ -1,8 +1,14 @@
-import { LitElement, html, css } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
+import {
+  LitElement,
+  html,
+  css
+} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
-// --- VISUELLER EDITOR (PRO) ---
+// --- VISUELLER EDITOR ---
 class BatteryModernCardEditor extends LitElement {
-  static get properties() { return { hass: {}, config: {} }; }
+  static get properties() {
+    return { hass: {}, config: {} };
+  }
 
   setConfig(config) {
     this.config = { 
@@ -37,8 +43,11 @@ class BatteryModernCardEditor extends LitElement {
   }
 
   _fireChanged() {
-    const event = new Event("config-changed", { bubbles: true, composed: true });
-    event.detail = { config: this.config };
+    const event = new CustomEvent("config-changed", {
+      detail: { config: this.config },
+      bubbles: true,
+      composed: true,
+    });
     this.dispatchEvent(event);
   }
 
@@ -47,14 +56,13 @@ class BatteryModernCardEditor extends LitElement {
 
     return html`
       <div class="editor-container">
-        
         <ha-expansion-panel header="Header & Titel Design" outlined expanded>
           <div class="panel-content">
             <div class="grid-2">
               <ha-textfield label="Titel" .value="${this.config.title || ''}" @input="${(e) => this._changeValue('title', e.target.value)}"></ha-textfield>
               <ha-icon-picker .hass=${this.hass} .value=${this.config.title_icon || ''} label="Titel Icon" @value-changed=${(e) => this._changeValue('title_icon', e.detail.value)}></ha-icon-picker>
               <ha-textfield label="Titel Farbe" .value="${this.config.title_color || ''}" @input="${(e) => this._changeValue('title_color', e.target.value)}"></ha-textfield>
-              <ha-textfield label="Titel Größe (CSS)" .value="${this.config.title_size || ''}" @input="${(e) => this._changeValue('title_size', e.target.value)}"></ha-textfield>
+              <ha-textfield label="Titel Größe (z.B. 24px)" .value="${this.config.title_size || ''}" @input="${(e) => this._changeValue('title_size', e.target.value)}"></ha-textfield>
             </div>
           </div>
         </ha-expansion-panel>
@@ -73,7 +81,6 @@ class BatteryModernCardEditor extends LitElement {
         <ha-expansion-panel header="Manuelle Entitäten & Badges" outlined>
           <div class="panel-content">
             <ha-entity-picker .hass=${this.hass} label="Entität hinzufügen" @value-changed=${(e) => this._addManualEntity(e.detail.value)}></ha-entity-picker>
-            
             <div class="manual-list">
                 ${this.config.manual_entities.map((ent, i) => html`
                     <div class="manual-item-editor">
@@ -81,13 +88,12 @@ class BatteryModernCardEditor extends LitElement {
                         <span class="ent-id">${ent.entity}</span>
                         <ha-icon icon="mdi:delete" @click=${() => this._removeManual(i)}></ha-icon>
                       </div>
-                      <ha-textfield label="Manuelles Badge (z.B. Keller)" .value="${ent.badge || ''}" @input="${(e) => this._updateManualBadge(i, e.target.value)}"></ha-textfield>
+                      <ha-textfield label="Badge (z.B. Küche)" .value="${ent.badge || ''}" @input="${(e) => this._updateManualBadge(i, e.target.value)}"></ha-textfield>
                     </div>
                 `)}
             </div>
           </div>
         </ha-expansion-panel>
-
       </div>
     `;
   }
@@ -98,9 +104,9 @@ class BatteryModernCardEditor extends LitElement {
       .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .panel-content { padding: 12px 0; }
       .manual-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
-      .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.02); }
+      .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); }
       .manual-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-      .ent-id { font-size: 0.8rem; font-weight: bold; color: var(--primary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+      .ent-id { font-size: 0.8rem; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
       ha-textfield, ha-entity-picker { width: 100%; }
       ha-icon { cursor: pointer; --mdc-icon-size: 20px; color: var(--error-color); }
     `;
@@ -110,13 +116,22 @@ customElements.define("battery-modern-card-editor", BatteryModernCardEditor);
 
 // --- FRONTEND KARTE ---
 class BatteryModernCard extends LitElement {
-  static get properties() { return { hass: { type: Object }, config: { type: Object } }; }
+  static get properties() {
+    return { hass: {}, config: {} };
+  }
 
-  static getConfigElement() { return document.createElement("battery-modern-card-editor"); }
+  static getConfigElement() {
+    return document.createElement("battery-modern-card-editor");
+  }
 
-  static getStubConfig() { return { title: "Batteriestatus", manual_entities: [] }; }
+  // WICHTIG: Erlaubt dem Card Picker die Karte anzuzeigen
+  static getStubConfig() {
+    return { title: "Batteriestatus", title_icon: "mdi:battery-check", manual_entities: [] };
+  }
 
-  setConfig(config) { this.config = config; }
+  setConfig(config) {
+    this.config = config;
+  }
 
   _getCategory(entityId, friendlyName) {
     const manual = (this.config.manual_entities || []).find(e => e.entity === entityId);
@@ -125,7 +140,7 @@ class BatteryModernCard extends LitElement {
     const text = (entityId + " " + (friendlyName || "")).toLowerCase();
     if (text.includes("presence") || text.includes("anwesenheit") || text.includes("occupancy")) return "Anwesenheit";
     if (text.includes("window") || text.includes("fenster") || text.includes("door") || text.includes("tür")) return "Fenster/Tür";
-    if (text.includes("temp") || text.includes("hum") || text.includes("feucht")) return "Klima";
+    if (text.includes("temp") || text.includes("hum") || text.includes("feucht") || text.includes("klima")) return "Klima";
     if (text.includes("lock") || text.includes("schloss")) return "Schloss";
     if (text.includes("smoke") || text.includes("rauch")) return "Rauch";
     if (text.includes("water") || text.includes("wasser") || text.includes("leak")) return "Wasser";
@@ -133,7 +148,7 @@ class BatteryModernCard extends LitElement {
   }
 
   render() {
-    if (!this.hass) return html``;
+    if (!this.hass || !this.config) return html``;
 
     const autoEntities = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
@@ -203,17 +218,19 @@ class BatteryModernCard extends LitElement {
 
   static get styles() {
     return css`
-      .header { padding: 24px 16px 16px; display: flex; align-items: center; font-size: 24px; }
+      .header { padding: 24px 16px 16px; display: flex; align-items: center; font-size: 24px; font-weight: 400; }
       .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 20px; }
-      .box { border-radius: 12px; padding: 20px; text-align: center; background: var(--ha-card-background, white); border: var(--c-border); box-shadow: var(--c-shadow); display: flex; flex-direction: column; }
+      .box { border-radius: 12px; padding: 20px; text-align: center; background: var(--ha-card-background, white); border: var(--c-border); box-shadow: var(--c-shadow); display: flex; flex-direction: column; transition: transform 0.2s; }
+      .box:hover { transform: translateY(-2px); }
       .box.warn { border: 1px solid #f44336; }
       .box span { font-size: 2.2rem; font-weight: 500; }
       .box label { font-size: 0.8rem; color: var(--secondary-text-color); text-transform: uppercase; font-weight: 600; }
       .content { padding: 0 16px 16px; }
       .list { display: flex; flex-direction: column; gap: 12px; }
-      .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--ha-card-background, white); border: var(--c-border); box-shadow: var(--c-shadow); }
-      .info { flex-grow: 1; margin-left: 16px; display: flex; flex-direction: column; }
-      .name { font-weight: 600; font-size: 1rem; }
+      .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--ha-card-background, white); border: var(--c-border); box-shadow: var(--c-shadow); transition: transform 0.1s; }
+      .item:hover { transform: translateY(-1px); filter: brightness(0.98); }
+      .info { flex-grow: 1; margin-left: 16px; display: flex; flex-direction: column; overflow: hidden; }
+      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
       .badge { font-size: 0.7rem; background: var(--secondary-background-color); padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px; color: var(--secondary-text-color); font-weight: bold; }
       .val { font-weight: bold; font-size: 1.1rem; }
       .panel { margin-top: 16px; border-radius: 12px; }
@@ -223,11 +240,14 @@ class BatteryModernCard extends LitElement {
 
 customElements.define("battery-modern-card", BatteryModernCard);
 
-// --- DIESER TEIL IST ENTSCHEIDEND FÜR DAS MENÜ ---
+// --- UNFEHLBARER REGISTRIERUNGS-BLOCK ---
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "battery-modern-card",
-  name: "Battery Modern Card",
-  description: "Stylische Karte zur Überwachung von Batterien mit Auto-Discovery und Badge-System.",
-  preview: true
-});
+const cardExists = window.customCards.some(c => c.type === "battery-modern-card");
+if (!cardExists) {
+  window.customCards.push({
+    type: "battery-modern-card",
+    name: "Battery Modern Card",
+    description: "Modern Proxmox/AdGuard style battery monitor with auto-discovery.",
+    preview: true
+  });
+}
