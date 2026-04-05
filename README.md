@@ -5,12 +5,14 @@
 A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGuard Card and my previous Proxmox HA Card. 
 
 ## ✨ Features
-- **Visual Editor:** Full UI configuration with Accordion menus.
-- **Header Styling:** Custom icons and font settings for the title.
-- **Top Stats:** Summary boxes for average level and critical devices.
-- **Smart Icons:** Battery icons change dynamically based on percentage.
-- **Auto-Coloring:** Values turn Red/Yellow/Green based on level.
-- **Hover Effects:** Soft shadows and subtle 3D lift animations.
+
+- **🚀 Smart Auto-Discovery:** Automatically scans your entire system for battery entities (via `device_class` or naming conventions).
+- **🏷️ Intelligent Categorization:** Automatically assigns badges to batteries based on their function (e.g., Windows, Climate, Presence, Smoke Detectors).
+- **🎨 Visual Accordion Editor:** Fully manage your card via the UI. No YAML knowledge required!
+- **🛠️ Manual Badge Overrides:** Assign custom labels (e.g., "Cellar", "Attic", "Guest Room") to any entity directly in the editor.
+- **👁️ Focus Mode:** Automatically hides healthy batteries (>40%) in a collapsible section, keeping your dashboard clean and actionable.
+- **💅 Full CSS Control:** Customize borders, shadows, colors, and sizes for every element (Header, Stat-Boxes, and Rows) to match your theme perfectly.
+- **📊 Real-time Stats:** Glanceable overview of total battery count and critical devices needing attention.
 
 ## 📥 Installation
 
@@ -38,18 +40,27 @@ The easiest way to install this card is via the **Home Assistant Community Store
    - Resource type: `JavaScript Module`
 
 ## ⚙️ Configuration
-Use the Visual Editor for the best experience.
+
+The card is designed to work out-of-the-box. Just add it to your dashboard. If you want to customize it, use the **Visual Editor**.
+
+### Category Logic (Automatic)
+The card detects the following categories automatically based on entity IDs and friendly names:
+- **Presence:** Occupancy/Presence sensors.
+- **Window/Door:** Contact sensors.
+- **Climate:** Temperature/Humidity sensors.
+- **Locks:** Smart locks.
+- **Smoke:** Smoke detectors.
+- **Water:** Leak/Water sensors.
 
 ### Manual YAML Example
 ```yaml
 type: custom:battery-modern-card
-title: Haus Batterien
-title_icon: mdi:battery-charging
-entities:
-  - entity: sensor.kueche_thermometer_battery
-    name: Küche
-  - entity: sensor.wohnzimmer_fenster_battery
-    name: Wohnzimmer
+title: My Devices
+title_icon: mdi:battery-check
+stat_shadow: "0 10px 20px rgba(0,0,0,0.1)"
+manual_entities:
+  - entity: sensor.special_device_battery
+    badge: "Custom Label"
 ````
 
 ## 🙏 Credits & Appreciation
