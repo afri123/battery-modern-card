@@ -1,0 +1,8 @@
+{
+  "name": "Battery Modern Card",
+  "render_readme": true,
+  "category": "plugin",
+  "filename": "battery-modern-card.js",
+  "author": "afri123",
+  "description": "A modern, aesthetically pleasing battery status card inspired by Proxmox and AdGuard styles."
+}
