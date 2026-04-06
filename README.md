@@ -5,6 +5,14 @@
 
 A sleek, modern battery monitoring card inspired by the clean aesthetics of AdGuard Card and my previous Proxmox HA Card. Designed as a "set-it-and-forget-it" tool, it features intelligent auto-discovery while offering ultimate customization capabilities.
 
+<table>
+  <tr>
+    <td><img width="685" height="1017" alt="battery modern card 1" src="https://github.com/user-attachments/assets/7baa1220-7580-4cb2-b521-1b242482770b" /></td> 
+    <td><img width="804" height="1159" alt="battery modern card 2" src="https://github.com/user-attachments/assets/697ae1eb-09d4-4152-b66e-5d41bfd9fc48" /></td> 
+  </td>
+  </tr>
+</table>
+
 ## ✨ Features
 
 - **🚀 Smart Auto-Discovery:** Automatically scans your system for battery entities via `device_class` or naming conventions.
