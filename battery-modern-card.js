@@ -135,8 +135,7 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              .value=${""}
-              include-domains='["sensor", "binary_sensor"]'
+              .includeDomains=${["sensor", "binary_sensor"]}
               label="Manuell hinzufügen (Include)" 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
@@ -148,11 +147,7 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              .value=${""}
-              .entityFilter=${(stateObj) => {
-                const id = stateObj.entity_id;
-                return stateObj.attributes.device_class === 'battery' || (stateObj.attributes.unit_of_measurement === '%' && id.includes('battery'));
-              }}
+              .includeDomains=${["sensor", "binary_sensor"]}
               label="Dauerhaft ausblenden (Exclude)" 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
@@ -399,7 +394,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Test",
+    description: "Ultimate Edition with Bugfixes.",
     preview: true
   });
 }
