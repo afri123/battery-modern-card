@@ -135,7 +135,7 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              .includeDomains=${["sensor", "binary_sensor"]}
+              .includeDomains=${['sensor', 'binary_sensor']}
               label="Manuell hinzufügen (Include)" 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
@@ -147,7 +147,7 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              .includeDomains=${["sensor", "binary_sensor"]}
+              .includeDomains=${['sensor', 'binary_sensor']}
               label="Dauerhaft ausblenden (Exclude)" 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
