@@ -255,7 +255,21 @@ class BatteryModernCard extends LitElement {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
       if (excludeList.includes(id)) return false;
-      if (this.config.filter_battery_plus && (id.toLowerCase().endsWith('battery+') || (s.attributes.friendly_name || "").toLowerCase().endsWith('battery+'))) return false;
+      
+      // GEFIXT: Sucht nach _plus (HA ID-Formatierung) sowie englischen und deutschen Namen
+      if (this.config.filter_battery_plus) {
+        const idLower = id.toLowerCase();
+        const nameLower = (s.attributes.friendly_name || "").toLowerCase();
+        if (
+          idLower.endsWith('battery_plus') || 
+          idLower.endsWith('batterie_plus') || 
+          nameLower.endsWith('battery+') || 
+          nameLower.endsWith('batterie+')
+        ) {
+          return false;
+        }
+      }
+      
       return isBattery;
     });
     
@@ -275,119 +289,4 @@ class BatteryModernCard extends LitElement {
         };
       })
       .filter(b => b !== null && !isNaN(b.state))
-      .sort((a, b) => a.state - b.state);
-
-    const critical = batteries.filter(b => b.state <= 40);
-    const healthy = batteries.filter(b => b.state > 40);
-
-    const globalStyles = `
-      --c-header-bg: ${this.config.header_bg || 'transparent'};
-      
-      --c-stat-bg: ${this.config.stat_bg || 'var(--ha-card-background, white)'};
-      --c-stat-border: ${this.config.stat_border || 'none'};
-      --c-stat-shadow: ${this.config.stat_shadow || '0 4px 12px rgba(0,0,0,0.05)'};
-      
-      --c-warn-bg: ${this.config.stat_warn_bg || 'var(--ha-card-background, white)'};
-      --c-warn-border: ${this.config.stat_warn_border || '1px solid #f44336'};
-      --c-warn-val: ${this.config.stat_warn_value_color || '#f44336'};
-      --c-warn-label: ${this.config.stat_warn_label_color || 'var(--secondary-text-color)'};
-      
-      --c-row-bg: ${this.config.row_bg || 'var(--ha-card-background, white)'};
-      --c-row-border: ${this.config.row_border || 'none'};
-      --c-row-shadow: ${this.config.row_shadow || '0 2px 6px rgba(0,0,0,0.03)'};
-    `;
-
-    return html`
-      <ha-card style="${globalStyles}">
-        <div class="header" style="background: var(--c-header-bg); color: ${this.config.title_color || ''}; font-size: ${this.config.title_size || ''};">
-          ${this.config.title_icon ? html`<ha-icon icon="${this.config.title_icon}" style="margin-right:12px;"></ha-icon>` : ''}
-          ${this.config.title || 'Batteriestatus'}
-        </div>
-
-        <div class="stats">
-          <div class="box normal-box">
-            <span style="color: ${this.config.stat_value_color || ''}; font-size: ${this.config.stat_value_size || ''};">${batteries.length}</span>
-            <label style="color: ${this.config.stat_label_color || ''}; font-size: ${this.config.stat_label_size || ''};">Gesamt</label>
-          </div>
-          <div class="box warn-box ${critical.length > 0 ? 'active-warn' : ''}">
-            <span class="warn-val">${critical.length}</span>
-            <label class="warn-lbl">Kritisch</label>
-          </div>
-        </div>
-
-        <div class="content">
-          <div class="list">${critical.map(b => this._renderItem(b))}</div>
-          ${healthy.length > 0 ? html`
-            <ha-expansion-panel header="OK (${healthy.length})" outlined class="panel">
-              <div class="list" style="padding: 10px 0;">${healthy.map(b => this._renderItem(b))}</div>
-            </ha-expansion-panel>
-          ` : ''}
-        </div>
-      </ha-card>
-    `;
-  }
-
-  _renderItem(b) {
-    const iconColor = b.state <= 20 ? "#f44336" : (b.state <= 40 ? "#ff9800" : "#4caf50");
-    return html`
-      <div class="item">
-        <ha-icon icon="mdi:battery${b.state <= 10 ? '-outline' : (b.state >= 95 ? '' : '-' + Math.round(b.state/10)*10)}" style="color: ${iconColor}"></ha-icon>
-        <div class="info">
-          <div class="name clickable" @click=${() => this._handleMoreInfo(b.id)} style="color: ${this.config.name_color || ''}; font-size: ${this.config.name_size || ''};">
-            ${b.name}
-          </div>
-          <div class="badge">${b.category}</div>
-        </div>
-        <div class="val" style="color: ${this.config.value_color || iconColor}; font-size: ${this.config.value_size || ''};">${b.state}%</div>
-      </div>
-    `;
-  }
-
-  static get styles() {
-    return css`
-      ha-card { overflow: hidden; }
-      .header { padding: 24px 16px 16px; display: flex; align-items: center; font-size: 24px; font-weight: 400; }
-      
-      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 20px; }
-      .box { border-radius: 12px; padding: 20px; text-align: center; display: flex; flex-direction: column; box-shadow: var(--c-stat-shadow); transition: transform 0.2s; }
-      .box:hover { transform: translateY(-2px); }
-      .box span { font-size: 2.2rem; font-weight: 500; }
-      .box label { font-size: 0.8rem; color: var(--secondary-text-color); text-transform: uppercase; font-weight: 600; }
-      
-      .normal-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
-      
-      .warn-box { background: var(--c-stat-bg); border: var(--c-stat-border); }
-      .warn-box.active-warn { background: var(--c-warn-bg); border: var(--c-warn-border); }
-      .warn-box.active-warn .warn-val { color: var(--c-warn-val); }
-      .warn-box.active-warn .warn-lbl { color: var(--c-warn-label); }
-      
-      .content { padding: 0 16px 16px; }
-      .list { display: flex; flex-direction: column; gap: 12px; }
-      
-      .item { display: flex; align-items: center; padding: 12px 16px; border-radius: 12px; background: var(--c-row-bg); border: var(--c-row-border); box-shadow: var(--c-row-shadow); transition: transform 0.1s; }
-      .item:hover { transform: translateY(-1px); filter: brightness(0.98); }
-      .info { flex-grow: 1; margin-left: 16px; overflow: hidden; }
-      
-      .name { font-weight: 600; font-size: 1rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; transition: color 0.2s; }
-      .clickable { cursor: pointer; }
-      .clickable:hover { color: var(--primary-color) !important; text-decoration: underline; }
-      
-      .badge { font-size: 0.7rem; background: var(--secondary-background-color); padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px; color: var(--secondary-text-color); font-weight: bold; }
-      .val { font-weight: bold; font-size: 1.1rem; }
-      .panel { margin-top: 16px; border-radius: 12px; }
-    `;
-  }
-}
-
-customElements.define("battery-modern-card", BatteryModernCard);
-
-window.customCards = window.customCards || [];
-const cardExists = window.customCards.some(c => c.type === "battery-modern-card");
-if (!cardExists) {
-  window.customCards.push({
-    type: "battery-modern-card",
-    name: "Battery Modern Card",
-    description: "Ultimate Edition with Bugfixes.",
-    preview: true
-  });
-}
+      .sort((a, b) => a.state - b.state
