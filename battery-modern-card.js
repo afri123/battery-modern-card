@@ -68,6 +68,7 @@ class BatteryModernCardEditor extends LitElement {
     const manualList = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
     const excludeList = this.config.exclude || [];
 
+    // Alle aktuell auf der Karte sichtbaren Entitäten laden
     const currentIds = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
@@ -101,7 +102,7 @@ class BatteryModernCardEditor extends LitElement {
             
             <h4 class="section-title critical-title">Kritische Box (Warnung)</h4>
             <div class="grid-2">
-              <ha-textfield label="Hintergrund (Kritisch)" .value="${this.config.stat_warn_bg || ''}" @input="${(e) => this._changeValue('stat_warn_bg', e.target.value)}" placeholder="z.B. rgba(244,67,54,0.1)"></ha-textfield>
+              <ha-textfield label="Hintergrund (Kritisch)" .value="${this.config.stat_warn_bg || ''}" @input="${(e) => this._changeValue('stat_warn_bg', e.target.value)}" placeholder="rgba(244,67,54,0.1)"></ha-textfield>
               <ha-textfield label="Rahmen (Kritisch)" .value="${this.config.stat_warn_border || ''}" @input="${(e) => this._changeValue('stat_warn_border', e.target.value)}" placeholder="1px solid #f44336"></ha-textfield>
               <ha-textfield label="Zahl Farbe (Kritisch)" .value="${this.config.stat_warn_value_color || ''}" @input="${(e) => this._changeValue('stat_warn_value_color', e.target.value)}" placeholder="#f44336"></ha-textfield>
               <ha-textfield label="Label Farbe (Kritisch)" .value="${this.config.stat_warn_label_color || ''}" @input="${(e) => this._changeValue('stat_warn_label_color', e.target.value)}"></ha-textfield>
@@ -124,54 +125,48 @@ class BatteryModernCardEditor extends LitElement {
           </div>
         </ha-expansion-panel>
 
-        <ha-expansion-panel header="Filter & Entitäten bearbeiten" outlined expanded>
+        <ha-expansion-panel header="Filter & Manuell Hinzufügen" outlined expanded>
           <div class="panel-content">
             <div class="switch-row">
                 <span>Battery+ Duplikate ausblenden</span>
                 <ha-switch .checked=${this.config.filter_battery_plus} @change=${() => this._toggleFilter('filter_battery_plus')}></ha-switch>
             </div>
             
-            <h4 class="section-title">Hinzufügen / Ausblenden</h4>
+            <h4 class="section-title">Fehlende Batterie hinzufügen</h4>
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              .includeDomains=${['sensor', 'binary_sensor']}
               label="Manuell hinzufügen (Include)" 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
                   this._addEntity('manual_entities', e.detail.value); 
-                  e.target.value = ""; 
-                }
-              }}>
-            </ha-entity-picker>
-            
-            <ha-entity-picker 
-              .hass=${this.hass} 
-              .includeDomains=${['sensor', 'binary_sensor']}
-              label="Dauerhaft ausblenden (Exclude)" 
-              @value-changed=${(e) => { 
-                if(e.detail.value) {
-                  this._addEntity('exclude', e.detail.value); 
-                  e.target.value = ""; 
                 }
               }}>
             </ha-entity-picker>
 
             <div class="chip-container">
-              ${excludeList.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
               ${manualList.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
+            </div>
+
+            <h4 class="section-title">Ausgeblendete Batterien</h4>
+            <p class="info-text">Sensoren kannst du im Tab unten drunter ("Sichtbare Batterien") per Klick ausblenden.</p>
+            <div class="chip-container">
+              ${excludeList.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
             </div>
           </div>
         </ha-expansion-panel>
 
-        <ha-expansion-panel header="Badge Overrides (Manuelle Label)" outlined>
+        <ha-expansion-panel header="Sichtbare Batterien (Label & Ausblenden)" outlined>
           <div class="panel-content">
-            <p class="info-text">Prio: Manuell > Automatik > Sonstiges.</p>
+            <p class="info-text">Vergib eigene Namen oder klicke auf das 👁️-Icon, um falsche Sensoren komplett auszublenden.</p>
             <div class="manual-list">
               ${currentIds.map(id => html`
                 <div class="manual-item-editor">
-                  <div class="ent-id">${this.hass.states[id]?.attributes?.friendly_name || id}</div>
-                  <ha-textfield label="Label" .value="${this.config.custom_badges[id] || ''}" @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" placeholder="Automatik: ${this._getAutoCategory(id)}"></ha-textfield>
+                  <div class="ent-header">
+                    <div class="ent-id">${this.hass.states[id]?.attributes?.friendly_name || id}</div>
+                    <ha-icon icon="mdi:eye-off" title="Dauerhaft ausblenden" @click=${() => this._addEntity('exclude', id)}></ha-icon>
+                  </div>
+                  <ha-textfield label="Manuelles Label" .value="${this.config.custom_badges[id] || ''}" @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" placeholder="Automatik: ${this._getAutoCategory(id)}"></ha-textfield>
                 </div>
               `)}
             </div>
@@ -201,11 +196,14 @@ class BatteryModernCardEditor extends LitElement {
       .section-title { margin: 16px 0 8px; font-size: 0.9rem; color: var(--primary-color); border-bottom: 1px solid var(--divider-color); padding-bottom: 4px; }
       .critical-title { color: var(--error-color); }
       .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; font-weight: 500; }
-      .info-text { font-size: 0.85rem; color: var(--secondary-text-color); margin-bottom: 12px; }
-      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
+      .info-text { font-size: 0.85rem; color: var(--secondary-text-color); margin-bottom: 12px; line-height: 1.4; }
+      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
       .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); }
-      .ent-id { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: var(--primary-color); }
-      .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+      .ent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+      .ent-id { font-size: 0.8rem; font-weight: bold; color: var(--primary-color); }
+      .ent-header ha-icon { color: var(--error-color); cursor: pointer; --mdc-icon-size: 20px; transition: transform 0.1s; }
+      .ent-header ha-icon:hover { transform: scale(1.2); }
+      .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
       .chip { padding: 4px 10px; border-radius: 16px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
       .chip.exclude { background: rgba(244,67,54,0.1); border: 1px solid #f44336; color: #f44336; }
       .chip.include { background: rgba(76,175,80,0.1); border: 1px solid #4caf50; color: #4caf50; }
@@ -268,7 +266,7 @@ class BatteryModernCard extends LitElement {
     });
     
     const manualIds = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
-    const combinedIds = [...new Set([...autoEntities, ...manualIds])];
+    const combinedIds = [...new Set([...autoEntities, ...manualIds])].filter(id => !excludeList.includes(id));
 
     const batteries = combinedIds
       .map(id => {
@@ -394,7 +392,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Ultimate Edition with Bugfixes.",
+    description: "Ultimate Edition with UX Fixes.",
     preview: true
   });
 }
