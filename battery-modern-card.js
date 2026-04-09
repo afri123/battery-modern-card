@@ -135,12 +135,10 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              label="Entität suchen..." 
+              label="Entität suchen und hinzufügen..." 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
                   this._addEntity('manual_entities', e.detail.value); 
-                  // Timeout verhindert den HA Render-Crash
-                  setTimeout(() => { e.target.value = ""; }, 50);
                 }
               }}>
             </ha-entity-picker>
@@ -393,7 +391,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Ultimate Edition with Final UX Fixes.",
+    description: "Ultimate Edition with Stable Picker.",
     preview: true
   });
 }
