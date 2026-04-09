@@ -68,7 +68,6 @@ class BatteryModernCardEditor extends LitElement {
     const manualList = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
     const excludeList = this.config.exclude || [];
 
-    // Alle aktuell auf der Karte sichtbaren Entitäten laden
     const currentIds = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
       const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
@@ -136,10 +135,12 @@ class BatteryModernCardEditor extends LitElement {
             
             <ha-entity-picker 
               .hass=${this.hass} 
-              label="Manuell hinzufügen (Include)" 
+              label="Entität suchen..." 
               @value-changed=${(e) => { 
                 if(e.detail.value) {
                   this._addEntity('manual_entities', e.detail.value); 
+                  // Timeout verhindert den HA Render-Crash
+                  setTimeout(() => { e.target.value = ""; }, 50);
                 }
               }}>
             </ha-entity-picker>
@@ -392,7 +393,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Ultimate Edition with UX Fixes.",
+    description: "Ultimate Edition with Final UX Fixes.",
     preview: true
   });
 }
