@@ -11,7 +11,6 @@ class BatteryModernCardEditor extends LitElement {
   setConfig(config) {
     this.config = { 
       ...config, 
-      manual_entities: config.manual_entities || [],
       exclude: config.exclude || [],
       custom_badges: config.custom_badges || {},
       filter_battery_plus: config.filter_battery_plus !== false 
@@ -38,19 +37,16 @@ class BatteryModernCardEditor extends LitElement {
     this._changeValue('custom_badges', custom_badges);
   }
 
-  _addEntity(field, entityId) {
-    if(!entityId) return;
-    const list = (this.config[field] || []).map(e => typeof e === 'string' ? e : e.entity);
-    if (!list.includes(entityId)) {
-      list.push(entityId);
-      this._changeValue(field, list);
+  _toggleExclude(entityId) {
+    let excludeList = [...(this.config.exclude || [])];
+    if (excludeList.includes(entityId)) {
+      // Wenn drin, dann entfernen (wieder einblenden)
+      excludeList = excludeList.filter(id => id !== entityId);
+    } else {
+      // Wenn nicht drin, dann hinzufügen (ausblenden)
+      excludeList.push(entityId);
     }
-  }
-
-  _removeEntity(field, index) {
-    const list = [...(this.config[field] || [])];
-    list.splice(index, 1);
-    this._changeValue(field, list);
+    this._changeValue('exclude', excludeList);
   }
 
   _fireChanged() {
@@ -65,14 +61,13 @@ class BatteryModernCardEditor extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
 
-    const manualList = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
     const excludeList = this.config.exclude || [];
 
-    const currentIds = Object.keys(this.hass.states).filter(id => {
+    // Finde ALLE Batterien im System, unabhängig davon ob sie versteckt sind
+    const allBatteryIds = Object.keys(this.hass.states).filter(id => {
       const s = this.hass.states[id];
-      const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
-      return isBattery || manualList.includes(id);
-    }).filter(id => !excludeList.includes(id));
+      return s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
+    });
 
     return html`
       <div class="editor-container">
@@ -124,50 +119,41 @@ class BatteryModernCardEditor extends LitElement {
           </div>
         </ha-expansion-panel>
 
-        <ha-expansion-panel header="Filter & Manuell Hinzufügen" outlined expanded>
+        <ha-expansion-panel header="Filter & Batterien verwalten" outlined expanded>
           <div class="panel-content">
             <div class="switch-row">
                 <span>Battery+ Duplikate ausblenden</span>
                 <ha-switch .checked=${this.config.filter_battery_plus} @change=${() => this._toggleFilter('filter_battery_plus')}></ha-switch>
             </div>
             
-            <h4 class="section-title">Fehlende Batterie hinzufügen</h4>
+            <p class="info-text">Vergib eigene Namen oder klicke auf das Auge, um Sensoren auf der Karte ein- oder auszublenden.</p>
             
-            <ha-entity-picker 
-              .hass=${this.hass} 
-              label="Entität suchen und hinzufügen..." 
-              @value-changed=${(e) => { 
-                if(e.detail.value) {
-                  this._addEntity('manual_entities', e.detail.value); 
-                }
-              }}>
-            </ha-entity-picker>
-
-            <div class="chip-container">
-              ${manualList.map((ent, i) => html`<div class="chip include">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('manual_entities', i)}></ha-icon></div>`)}
-            </div>
-
-            <h4 class="section-title">Ausgeblendete Batterien</h4>
-            <p class="info-text">Sensoren kannst du im Tab unten drunter ("Sichtbare Batterien") per Klick ausblenden.</p>
-            <div class="chip-container">
-              ${excludeList.map((ent, i) => html`<div class="chip exclude">${ent} <ha-icon icon="mdi:close" @click=${() => this._removeEntity('exclude', i)}></ha-icon></div>`)}
-            </div>
-          </div>
-        </ha-expansion-panel>
-
-        <ha-expansion-panel header="Sichtbare Batterien (Label & Ausblenden)" outlined>
-          <div class="panel-content">
-            <p class="info-text">Vergib eigene Namen oder klicke auf das 👁️-Icon, um falsche Sensoren komplett auszublenden.</p>
             <div class="manual-list">
-              ${currentIds.map(id => html`
-                <div class="manual-item-editor">
+              ${allBatteryIds.map(id => {
+                const isExcluded = excludeList.includes(id);
+                const eyeIcon = isExcluded ? "mdi:eye-off" : "mdi:eye";
+                const eyeColor = isExcluded ? "var(--error-color, #f44336)" : "var(--success-color, #4caf50)";
+                
+                return html`
+                <div class="manual-item-editor ${isExcluded ? 'excluded' : ''}">
                   <div class="ent-header">
                     <div class="ent-id">${this.hass.states[id]?.attributes?.friendly_name || id}</div>
-                    <ha-icon icon="mdi:eye-off" title="Dauerhaft ausblenden" @click=${() => this._addEntity('exclude', id)}></ha-icon>
+                    <ha-icon 
+                      icon="${eyeIcon}" 
+                      style="color: ${eyeColor};" 
+                      title="${isExcluded ? 'Wieder einblenden' : 'Ausblenden'}" 
+                      @click=${() => this._toggleExclude(id)}>
+                    </ha-icon>
                   </div>
-                  <ha-textfield label="Manuelles Label" .value="${this.config.custom_badges[id] || ''}" @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" placeholder="Automatik: ${this._getAutoCategory(id)}"></ha-textfield>
+                  <ha-textfield 
+                    label="Manuelles Label" 
+                    .value="${this.config.custom_badges[id] || ''}" 
+                    @input="${(e) => this._updateBadgeOverride(id, e.target.value)}" 
+                    placeholder="Automatik: ${this._getAutoCategory(id)}"
+                    ?disabled=${isExcluded}>
+                  </ha-textfield>
                 </div>
-              `)}
+              `})}
             </div>
           </div>
         </ha-expansion-panel>
@@ -194,20 +180,16 @@ class BatteryModernCardEditor extends LitElement {
       .panel-content { padding: 12px 0; }
       .section-title { margin: 16px 0 8px; font-size: 0.9rem; color: var(--primary-color); border-bottom: 1px solid var(--divider-color); padding-bottom: 4px; }
       .critical-title { color: var(--error-color); }
-      .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; font-weight: 500; }
+      .switch-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; font-weight: 500; border-bottom: 1px solid var(--divider-color); margin-bottom: 16px; }
       .info-text { font-size: 0.85rem; color: var(--secondary-text-color); margin-bottom: 12px; line-height: 1.4; }
-      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
-      .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); }
+      .manual-list { display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto; padding-right: 5px; }
+      .manual-item-editor { border: 1px solid var(--divider-color); padding: 10px; border-radius: 8px; background: rgba(var(--rgb-primary-text-color), 0.02); transition: opacity 0.2s; }
+      .manual-item-editor.excluded { opacity: 0.5; background: rgba(var(--rgb-error-color), 0.05); border-color: rgba(var(--rgb-error-color), 0.3); }
       .ent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
       .ent-id { font-size: 0.8rem; font-weight: bold; color: var(--primary-color); }
-      .ent-header ha-icon { color: var(--error-color); cursor: pointer; --mdc-icon-size: 20px; transition: transform 0.1s; }
+      .ent-header ha-icon { cursor: pointer; --mdc-icon-size: 24px; transition: transform 0.1s; }
       .ent-header ha-icon:hover { transform: scale(1.2); }
-      .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-      .chip { padding: 4px 10px; border-radius: 16px; display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
-      .chip.exclude { background: rgba(244,67,54,0.1); border: 1px solid #f44336; color: #f44336; }
-      .chip.include { background: rgba(76,175,80,0.1); border: 1px solid #4caf50; color: #4caf50; }
-      ha-textfield, ha-entity-picker, ha-icon-picker { width: 100%; margin-bottom: 4px; }
-      ha-icon { cursor: pointer; --mdc-icon-size: 16px; }
+      ha-textfield, ha-icon-picker { width: 100%; margin-bottom: 4px; }
     `;
   }
 }
@@ -218,7 +200,7 @@ class BatteryModernCard extends LitElement {
   static get properties() { return { hass: {}, config: {} }; }
 
   static getConfigElement() { return document.createElement("battery-modern-card-editor"); }
-  static getStubConfig() { return { title: "Batteriestatus", filter_battery_plus: true, manual_entities: [], exclude: [], custom_badges: {} }; }
+  static getStubConfig() { return { title: "Batteriestatus", filter_battery_plus: true, exclude: [], custom_badges: {} }; }
 
   setConfig(config) { this.config = config; }
 
@@ -243,34 +225,32 @@ class BatteryModernCard extends LitElement {
     if (!this.hass || !this.config) return html``;
 
     const excludeList = this.config.exclude || [];
-    const autoEntities = Object.keys(this.hass.states).filter(id => {
-      const s = this.hass.states[id];
-      const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
-      if (excludeList.includes(id)) return false;
-      
-      if (this.config.filter_battery_plus) {
-        const idLower = id.toLowerCase();
-        const nameLower = (s.attributes.friendly_name || "").toLowerCase();
-        if (
-          idLower.endsWith('battery_plus') || 
-          idLower.endsWith('batterie_plus') || 
-          nameLower.endsWith('battery+') || 
-          nameLower.endsWith('batterie+')
-        ) {
-          return false;
+    const batteries = Object.keys(this.hass.states)
+      .filter(id => {
+        const s = this.hass.states[id];
+        const isBattery = s.attributes.device_class === 'battery' || (s.attributes.unit_of_measurement === '%' && id.includes('battery'));
+        if (!isBattery) return false;
+        
+        // Manuelles Ausblenden
+        if (excludeList.includes(id)) return false;
+        
+        // Battery+ Filter
+        if (this.config.filter_battery_plus) {
+          const idLower = id.toLowerCase();
+          const nameLower = (s.attributes.friendly_name || "").toLowerCase();
+          if (
+            idLower.endsWith('battery_plus') || 
+            idLower.endsWith('batterie_plus') || 
+            nameLower.endsWith('battery+') || 
+            nameLower.endsWith('batterie+')
+          ) {
+            return false;
+          }
         }
-      }
-      
-      return isBattery;
-    });
-    
-    const manualIds = (this.config.manual_entities || []).map(e => typeof e === 'string' ? e : e.entity);
-    const combinedIds = [...new Set([...autoEntities, ...manualIds])].filter(id => !excludeList.includes(id));
-
-    const batteries = combinedIds
+        return true;
+      })
       .map(id => {
         const s = this.hass.states[id];
-        if (!s) return null;
         return {
           id,
           name: s.attributes.friendly_name || id,
@@ -391,7 +371,7 @@ if (!cardExists) {
   window.customCards.push({
     type: "battery-modern-card",
     name: "Battery Modern Card",
-    description: "Ultimate Edition with Stable Picker.",
+    description: "Ultimate Edition - Flawless UI Control.",
     preview: true
   });
 }
